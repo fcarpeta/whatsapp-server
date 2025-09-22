@@ -1,0 +1,11 @@
+node_modules/ 
+npm-debug.log 
+yarn-error.log 
+.env 
+.session/ 
+*.data.json 
+*.auth.json 
+dist/ 
+build/ 
+logs 
+*.log 

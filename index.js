@@ -60,11 +60,12 @@ const client = new Client({
   puppeteer: { args: ['--no-sandbox', '--disable-setuid-sandbox'] }
 });
 
-// ?? Eventos básicos del cliente
+//  Eventos básicos del cliente
 client.on('qr', qr => {
-  console.log(' Escanea este QR con WhatsApp:');
-  qrcode.generate(qr, { small: true });
+  console.log('👉 Abre este enlace para escanear el QR:');
+  console.log(`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qr)}`);
 });
+
 client.on('ready', () => console.log(' Cliente de WhatsApp listo.'));
 client.on('auth_failure', msg => console.error(' Fallo de autenticación:', msg));
 client.on('disconnected', reason => console.log(' Cliente desconectado:', reason));

@@ -6,7 +6,7 @@ const { Client, LocalAuth, MessageMedia, Buttons } = require('whatsapp-web.js');
 const csv = require('csv-parser');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 const authPath = path.join(__dirname, '.wwebjs_auth');
 const estadoUsuarios = {};
 let numerosPermitidos = new Set(); // Set global que se sobrescribe al cargar CSV
@@ -31,13 +31,13 @@ function cargarNumerosDesdeCSV() {
 }
 cargarNumerosDesdeCSV();
 
-// ?? Vigilar cambios en el archivo CSV y recargar automáticamente
+// ?? Vigilar cambios en el archivo CSV y recargar automÃ¡ticamente
 fs.watchFile('EnvioWS.csv', (curr, prev) => {
   console.log('CSV actualizado. Recargando...');
   cargarNumerosDesdeCSV();
 });
 
-// ?? Verificar carpeta de sesión
+// ?? Verificar carpeta de sesiÃ³n
 function checkSessionFolder() {
   try {
     if (!fs.existsSync(authPath)) fs.mkdirSync(authPath);
@@ -46,9 +46,9 @@ function checkSessionFolder() {
     console.log(' Carpeta de sesion con error. Borrando...');
     try {
       fs.rmSync(authPath, { recursive: true, force: true });
-      console.log(' Sesion eliminada. Nuevo QR aparecerá.');
+      console.log(' Sesion eliminada. Nuevo QR aparecerÃ¡.');
     } catch (e) {
-      console.error('? No se pudo eliminar sesión:', e.message);
+      console.error('? No se pudo eliminar sesiÃ³n:', e.message);
       process.exit(1);
     }
   }
@@ -60,13 +60,13 @@ const client = new Client({
   puppeteer: { args: ['--no-sandbox', '--disable-setuid-sandbox'] }
 });
 
-// ?? Eventos básicos del cliente
+// ?? Eventos bÃ¡sicos del cliente
 client.on('qr', qr => {
   console.log(' Escanea este QR con WhatsApp:');
   qrcode.generate(qr, { small: true });
 });
 client.on('ready', () => console.log(' Cliente de WhatsApp listo.'));
-client.on('auth_failure', msg => console.error(' Fallo de autenticación:', msg));
+client.on('auth_failure', msg => console.error(' Fallo de autenticaciÃ³n:', msg));
 client.on('disconnected', reason => console.log(' Cliente desconectado:', reason));
 
 client.initialize();
@@ -112,8 +112,8 @@ client.on('message', async msg => {
     return;
   }
 
-  const positivos = ['si', 'sí', 'interesado', 'quiero informacion', 'quiero mas informacion', 'más informacion', 'mas informacion', 'informacion','de que se trata','como es','Si estoy interesada','Si estoy interesado','si estoy interesada'];
-  const negativos = ['no', 'no estoy interesado', 'no me interesa', 'ya no me interesa', 'no gracias', 'No sra gracias', 'no señora gracias', 'Ya no estoy interesada', 'No, no me interesa adquirirlo en este momento','No, no estoy interesado en ningún producto','No ya no estoy interesado muchas gracias','en el momento no me interesa','No, ya no estoy interesado en adquirirlo en este momento.','No, ya no estoy interesado en adquirirlo en este momento'];
+  const positivos = ['si', 'sÃ­', 'interesado', 'quiero informacion', 'quiero mas informacion', 'mÃ¡s informacion', 'mas informacion', 'informacion','de que se trata','como es','Si estoy interesada','Si estoy interesado','si estoy interesada'];
+  const negativos = ['no', 'no estoy interesado', 'no me interesa', 'ya no me interesa', 'no gracias', 'No sra gracias', 'no seÃ±ora gracias', 'Ya no estoy interesada', 'No, no me interesa adquirirlo en este momento','No, no estoy interesado en ningÃºn producto','No ya no estoy interesado muchas gracias','en el momento no me interesa','No, ya no estoy interesado en adquirirlo en este momento.','No, ya no estoy interesado en adquirirlo en este momento'];
 
   if (!estadoUsuarios[numero]) {
     if (positivos.includes(texto)) {
@@ -134,16 +134,16 @@ client.on('message', async msg => {
       if (fs.existsSync(imgPath)) {
         const mediaImg = MessageMedia.fromFilePath(imgPath);
         await client.sendMessage(chatId, mediaImg, {
-          caption: 'Tarifas. ¿En que momento le puedo llamar?'
+          caption: 'Tarifas. Â¿En que momento le puedo llamar?'
         });
       }
 
       // Enviar Botones
       const botones = new Buttons(
-        '¿Qué deseas hacer ahora?',
-        [{ body: 'Ver más' }, { body: 'Contactar' }, { body: 'No gracias' }],
-        'Información adicional',
-        'Selecciona una opción'
+        'Â¿QuÃ© deseas hacer ahora?',
+        [{ body: 'Ver mÃ¡s' }, { body: 'Contactar' }, { body: 'No gracias' }],
+        'InformaciÃ³n adicional',
+        'Selecciona una opciÃ³n'
       );
       await client.sendMessage(chatId, botones);
 

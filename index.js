@@ -6,7 +6,7 @@ const csv = require('csv-parser');
 const qrcode = require('qrcode');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 10000;
 const authPath = path.join(__dirname, '.wwebjs_auth');
 const estadoUsuarios = {};
 let numerosPermitidos = new Set();

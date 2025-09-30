@@ -81,17 +81,17 @@ app.use(express.json({ limit: '20mb' }));
 
 // ?? Página principal
 app.get('/', (req, res) => {
- res.send(`
-  <html>
-    <head>
-      <meta charset="UTF-8">
-    </head>
-    <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;">
-      <h2>?? Escanea este código QR con WhatsApp</h2>
-      <img src="${qrImage}" />
-    </body>
-  </html>
-`);
+  res.send(`
+    <html>
+      <head><title>Servidor WhatsApp</title>
+	   <meta charset="UTF-8"></head>
+      <body style="font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;">
+        <h2>? Servidor WhatsApp funcionando</h2>
+        <p><a href="/qr">?? Haz clic aquí para escanear el código QR</a></p>
+      </body>
+    </html>
+  `);
+});
 
 
 // ?? Página para mostrar QR

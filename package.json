@@ -1,27 +1,11 @@
 {
-  "name": "whatsapp-server",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "start": "node index.js"
-  },
   "dependencies": {
     "csv-parser": "^3.2.0",
     "express": "^5.1.0",
-    "qrcode": "^1.5.4",
+    "mssql": "^11.0.1",
+    "node-cron": "^4.2.1",
+    "puppeteer": "^24.18.0",
     "qrcode-terminal": "^0.12.0",
-    "whatsapp-web.js": "^1.34.1"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/fcarpeta/whatsapp-server.git"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/fcarpeta/whatsapp-server/issues"
-  },
-  "homepage": "https://github.com/fcarpeta/whatsapp-server#readme",
-  "description": ""
+    "whatsapp-web.js": "github:pedroslopez/whatsapp-web.js"
+  }
 }

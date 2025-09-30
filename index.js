@@ -1,17 +1,18 @@
 const express = require('express');
 const fs = require('fs');
 const path = require('path');
-const qrcode = require('qrcode-terminal');
+const qrcode = require('qrcode'); // usamos qrcode para generar imagen
 const { Client, LocalAuth, MessageMedia, Buttons } = require('whatsapp-web.js');
 const csv = require('csv-parser');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 10000;
 const authPath = path.join(__dirname, '.wwebjs_auth');
 const estadoUsuarios = {};
 let numerosPermitidos = new Set();
+let qrCodeData = null; // guardar último QR
 
-// ?? Cargar CSV
+// ?? Cargar CSV con números permitidos
 function cargarNumerosDesdeCSV() {
   numerosPermitidos = new Set();
   fs.createReadStream('EnvioWS.csv')
@@ -26,13 +27,13 @@ function cargarNumerosDesdeCSV() {
       }
     })
     .on('end', () => {
-      console.log(`Numeros cargados: ${numerosPermitidos.size}`);
+      console.log(`?? Números cargados: ${numerosPermitidos.size}`);
     });
 }
 cargarNumerosDesdeCSV();
 
 fs.watchFile('EnvioWS.csv', () => {
-  console.log('CSV actualizado. Recargando...');
+  console.log('?? CSV actualizado. Recargando...');
   cargarNumerosDesdeCSV();
 });
 
@@ -42,10 +43,10 @@ function checkSessionFolder() {
     if (!fs.existsSync(authPath)) fs.mkdirSync(authPath);
     else fs.accessSync(authPath, fs.constants.W_OK);
   } catch (err) {
-    console.log(' Carpeta de sesion con error. Borrando...');
+    console.log('?? Carpeta de sesión con error. Borrando...');
     try {
       fs.rmSync(authPath, { recursive: true, force: true });
-      console.log(' Sesion eliminada. Nuevo QR aparecerá.');
+      console.log('??? Sesión eliminada. Nuevo QR aparecerá.');
     } catch (e) {
       console.error('? No se pudo eliminar sesión:', e.message);
       process.exit(1);
@@ -59,19 +60,59 @@ const client = new Client({
   puppeteer: { args: ['--no-sandbox', '--disable-setuid-sandbox'] }
 });
 
-client.on('qr', qr => {
-  console.log(' Escanea este QR con WhatsApp:');
-  qrcode.generate(qr, { small: true });
+// ?? Manejo de QR
+client.on('qr', (qr) => {
+  qrCodeData = qr;
+  const baseUrl = process.env.RENDER_EXTERNAL_URL || `https://whatsapp-boot-cu8h.onrender.com`;
+  console.log(`?? Escanea el QR en: ${baseUrl}/qr`);
 });
-client.on('ready', () => console.log(' Cliente de WhatsApp listo.'));
-client.on('auth_failure', msg => console.error(' Fallo de autenticación:', msg));
-client.on('disconnected', reason => console.log(' Cliente desconectado:', reason));
+
+
+client.on('ready', () => {
+  qrCodeData = null;
+  console.log('? Cliente de WhatsApp listo.');
+});
+
+client.on('auth_failure', (msg) => console.error('? Fallo de autenticación:', msg));
+client.on('disconnected', (reason) => console.log('?? Cliente desconectado:', reason));
 
 client.initialize();
 app.use(express.json({ limit: '20mb' }));
 
-app.get('/', (req, res) => res.send(' Servidor WhatsApp funcionando.'));
+// ?? Página principal
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+      <head><title>Servidor WhatsApp</title></head>
+      <body style="font-family:sans-serif;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;">
+        <h2>? Servidor WhatsApp funcionando</h2>
+        <p><a href="/qr">?? Haz clic aquí para escanear el código QR</a></p>
+      </body>
+    </html>
+  `);
+});
 
+// ?? Página para mostrar QR
+app.get('/qr', async (req, res) => {
+  if (!qrCodeData) {
+    return res.send('? Cliente conectado o QR no generado.');
+  }
+  try {
+    const qrImage = await qrcode.toDataURL(qrCodeData);
+    res.send(`
+      <html>
+        <body style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;">
+          <h2>?? Escanea este código QR con WhatsApp</h2>
+          <img src="${qrImage}" />
+        </body>
+      </html>
+    `);
+  } catch (err) {
+    res.status(500).send('? Error generando QR.');
+  }
+});
+
+// ?? Endpoint para enviar mensajes
 app.post('/enviar', async (req, res) => {
   const { numero, mensaje, imagen } = req.body;
 
@@ -105,46 +146,46 @@ app.post('/enviar', async (req, res) => {
   }
 });
 
-// ?? Escuchar mensajes
-client.on('message', async msg => {
+// ?? Responder mensajes recibidos
+client.on('message', async (msg) => {
   const numero = msg.from.replace('@c.us', '');
   const chatId = msg.from;
   const texto = msg.body.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
 
-  console.log(` Mensaje de ${numero}: ${texto}`);
+  console.log(`?? Mensaje de ${numero}: ${texto}`);
 
   if (!numerosPermitidos.has(numero)) {
-    console.log(` Numero ${numero} no esta en el archivo no se responde.`);
+    console.log(`?? Número ${numero} no está en el archivo. No se responde.`);
     return;
   }
 
-  const positivos = ['si', 'sí', 'interesado', 'quiero informacion', 'quiero mas informacion', 'más informacion', 'mas informacion', 'informacion','de que se trata','como es','Si estoy interesada','Si estoy interesado','si estoy interesada','Sí, estoy interesado más información','Sí estoy interesado,','Sí, estoy interesado, más información','Sí, estoy interesada, más información','Buenos días, si me gustaría más información','buenos dias, si me gustaria mas informacion','si me interesa', 'Si me interesa', 'Sí me interesa','si estoy interesado mas informacion'];
-  const negativos = ['no', 'no estoy interesado', 'no me interesa', 'ya no me interesa', 'no gracias', 'No sra gracias', 'no señora gracias', 'Ya no estoy interesada', 'No, no me interesa adquirirlo en este momento','No, no estoy interesado en ningún producto','No ya no estoy interesado muchas gracias','en el momento no me interesa','No, ya no estoy interesado en adquirirlo en este momento.','No, ya no estoy interesado en adquirirlo en este momento'];
+  const positivos = ['si', 'sí', 'interesado', 'quiero informacion', 'quiero mas informacion', 'más informacion', 'mas informacion', 'informacion', 'de que se trata', 'como es', 'si estoy interesada', 'si estoy interesado', 'si me interesa'];
+  const negativos = ['no', 'no estoy interesado', 'no me interesa', 'ya no me interesa', 'no gracias'];
 
   if (!estadoUsuarios[numero]) {
     if (positivos.includes(texto)) {
       estadoUsuarios[numero] = 'positivo';
-      await msg.reply('Gracias por tu interes. Te enviare mas informacion sobre los planes.');
+      await msg.reply('Gracias por tu interés. Te enviaré más información.');
 
-      // Enviar PDF
+      // PDF
       const pdfPath = path.join(__dirname, 'material', 'PORTAFOLIO_SERVICIOS_PAC_2025.pdf');
       if (fs.existsSync(pdfPath)) {
         const mediaPdf = MessageMedia.fromFilePath(pdfPath);
         await client.sendMessage(chatId, mediaPdf, {
-          caption: 'Tu salud merece comodidad, calidad y cercania. Con el Plan Alfa tienes consulta medica domiciliaria, acceso a 12 especialidades y puedes elegir la IPS que mas se ajuste a ti.'
+          caption: 'Plan Alfa: consulta médica domiciliaria + 12 especialidades + IPS a elección.'
         });
       }
 
-      // Enviar Imagen
+      // Imagen
       const imgPath = path.join(__dirname, 'material', 'precios.jpeg');
       if (fs.existsSync(imgPath)) {
         const mediaImg = MessageMedia.fromFilePath(imgPath);
         await client.sendMessage(chatId, mediaImg, {
-          caption: 'En que momento le puedo llamar?'
+          caption: '?? ¿En qué momento le puedo llamar?'
         });
       }
 
-      // Enviar Botones
+      // Botones
       const botones = new Buttons(
         '¿Qué deseas hacer ahora?',
         [{ body: 'Ver más' }, { body: 'Contactar' }, { body: 'No gracias' }],
@@ -155,15 +196,15 @@ client.on('message', async msg => {
 
     } else if (negativos.includes(texto)) {
       estadoUsuarios[numero] = 'negativo';
-      await msg.reply('Entendido. Si cambias de opinion, estoy para ayudarte.');
+      await msg.reply('Entendido. Si cambias de opinión, estoy para ayudarte.');
     } else {
-      console.log(' Mensaje no clasificado, ignorado.');
+      console.log('?? Mensaje no clasificado, ignorado.');
     }
   } else {
-    console.log(` Usuario ${numero} ya registrado como ${estadoUsuarios[numero]}`);
+    console.log(`?? Usuario ${numero} ya registrado como ${estadoUsuarios[numero]}`);
   }
 });
 
 app.listen(port, () => {
-  console.log(` Servidor corriendo en http://localhost:${port}`);
+  console.log(`?? Servidor corriendo en http://localhost:${port}`);
 });
